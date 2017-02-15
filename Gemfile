@@ -2,6 +2,14 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "jruby-openssl", :platform => :jruby
-gem "activerecord-jdbcsqlite3-adapter", :platform => :jruby
-gem "sqlite3", :platform => :ruby
+gem 'sqlite3', '~> 1.3.8', :platforms => :ruby
+gem 'pry'
+
+# Hinting at development dependencies
+# Prevents bundler from taking a long-time to resolve
+group :development, :test do
+  gem 'activerecord-import'
+  gem 'mime-types'
+  gem 'builder'
+  gem 'rubocop', require: false
+end

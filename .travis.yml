@@ -1,19 +1,22 @@
 rvm:
-  - 1.9.2
-  - 1.9.3
-  - jruby-19mode
-  - rbx-19mode
-  - 2.0.0
+  - 2.1
+  - 2.2.2
 
-before_script: "sudo ntpdate -ub ntp.ubuntu.com pool.ntp.org; true"
-script: "bundle exec rake clean test cucumber"
+script: "bundle exec rake clean spec cucumber"
+
+before_install:
+  - rvm @global do gem uninstall bundler -a -x
+  - rvm @global do gem install bundler -v 1.12.5
 
 gemfile:
-  - gemfiles/3.0.gemfile
-  - gemfiles/3.1.gemfile
-  - gemfiles/3.2.gemfile
+  - gemfiles/4.2.gemfile
+  - gemfiles/5.0.gemfile
 
 matrix:
-  allow_failures:
-    - rvm: jruby-19mode
-    - rvm: rbx-19mode
+  fast_finish: true
+  exclude:
+    - gemfile: gemfiles/5.0.gemfile
+      rvm: 2.1
+
+sudo: false
+cache: bundler

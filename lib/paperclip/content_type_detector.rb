@@ -2,7 +2,7 @@ module Paperclip
   class ContentTypeDetector
     # The content-type detection strategy is as follows:
     #
-    # 1. Blank/Empty files: If there's no filename or the file is empty,
+    # 1. Blank/Empty files: If there's no filepath or the file is empty,
     #    provide a sensible default (application/octet-stream or inode/x-empty)
     #
     # 2. Calculated match: Return the first result that is found by both the
@@ -20,8 +20,8 @@ module Paperclip
     EMPTY_TYPE = "inode/x-empty"
     SENSIBLE_DEFAULT = "application/octet-stream"
 
-    def initialize(filename)
-      @filename = filename
+    def initialize(filepath)
+      @filepath = filepath
     end
 
     # Returns a String describing the file's content type
@@ -32,47 +32,49 @@ module Paperclip
         EMPTY_TYPE
       elsif calculated_type_matches.any?
         calculated_type_matches.first
-      elsif official_type_matches.any?
-        official_type_matches.first
-      elsif unofficial_type_matches.any?
-        unofficial_type_matches.first
       else
-        type_from_file_command || SENSIBLE_DEFAULT
+        type_from_file_contents || SENSIBLE_DEFAULT
       end.to_s
     end
 
     private
 
-    def empty_file?
-      File.exists?(@filename) && File.size(@filename) == 0
-    end
-
     def blank_name?
-      @filename.nil? || @filename.empty?
+      @filepath.nil? || @filepath.empty?
     end
 
-    def empty?
-      File.exists?(@filename) && File.size(@filename) == 0
+    def empty_file?
+      File.exist?(@filepath) && File.size(@filepath) == 0
+    end
+
+    alias :empty? :empty_file?
+
+    def calculated_type_matches
+      possible_types.select do |content_type|
+        content_type == type_from_file_contents
+      end
     end
 
     def possible_types
-      MIME::Types.type_for(@filename).collect(&:content_type)
+      MIME::Types.type_for(@filepath).collect(&:content_type)
     end
 
-    def calculated_type_matches
-      possible_types.select{|content_type| content_type == type_from_file_command }
+    def type_from_file_contents
+      type_from_mime_magic || type_from_file_command
+    rescue Errno::ENOENT => e
+      Paperclip.log("Error while determining content type: #{e}")
+      SENSIBLE_DEFAULT
     end
 
-    def official_type_matches
-      possible_types.reject{|content_type| content_type.match(/\/x-/) }
-    end
-
-    def unofficial_type_matches
-      possible_types.select{|content_type| content_type.match(/\/x-/) }
+    def type_from_mime_magic
+      @type_from_mime_magic ||= File.open(@filepath) do |file|
+        MimeMagic.by_magic(file).try(:type)
+      end
     end
 
     def type_from_file_command
-      @type_from_file_command ||= FileCommandContentTypeDetector.new(@filename).detect
+      @type_from_file_command ||=
+        FileCommandContentTypeDetector.new(@filepath).detect
     end
   end
 end
